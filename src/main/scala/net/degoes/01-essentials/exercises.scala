@@ -4,6 +4,9 @@ package net.degoes.essentials
 
 import scalaz._
 
+import scala.util.Try
+import scala.util.control.NonFatal
+
 object types {
   type ??? = Nothing
 
@@ -123,7 +126,9 @@ object types {
   type Identifier1 = Either[Int, String]
 
   sealed trait Identifier2
+
   final case class Robot(id: Int) extends Identifier2
+
   final case class Person(name: String) extends Identifier2
 
   //
@@ -134,7 +139,7 @@ object types {
   //
   def to3[A](t: Either[A, Nothing]): A = t match {
     case Left(a) => a
-    case Right(b)  => b
+    case Right(b) => b
   }
 
   def from3[A](a: A): Either[A, Nothing] = Left(a)
@@ -171,11 +176,15 @@ object types {
   // piece on a chess board, which could be a pawn, rook, bishop, knight,
   // queen, or king.
   //
-//  type ChessPiece = Either[]
+  //  type ChessPiece = Either[]
   sealed trait ChessPiece
+
   final case object Pawn extends ChessPiece
+
   final case object Rook extends ChessPiece
+
   final case object Bishop extends ChessPiece
+
   final case object Knight extends ChessPiece
 
 
@@ -186,11 +195,26 @@ object types {
   // characters, different classes of items, and character stats.
   //
   type GameWorld = ???
+
   //too much effort.
+
+  // This is a pretty cool pattern, what is it called?
+  case class Character private(name: String)
+
+  object Character {
+    def apply(name: String): Option[Character] = {
+      if (name.trim.isEmpty)
+        None
+      else
+        Some(new Character(name))
+    }
+  }
+
 }
 
 object functions {
   type ??? = Nothing
+  //TODO: look into Scalazzi, which deletes ugly parts of scala.
 
   //
   // EXERCISE 1
@@ -199,7 +223,13 @@ object functions {
   //
   def parseInt1(s: String): Int = s.toInt
 
-  def parseInt2(s: String): ??? = ???
+  def parseInt2(s: String): Option[Int] = {
+    try {
+      Some(s.toInt)
+    } catch {
+      case NonFatal(_) => None
+    }
+  }
 
   //
   // EXERCISE 2
@@ -209,7 +239,10 @@ object functions {
   def arrayUpdate1[A](arr: Array[A], i: Int, f: A => A): Unit =
     arr.update(i, f(arr(i)))
 
-  def arrayUpdate2[A](arr: Array[A], i: Int, f: A => A): ??? = ???
+  def arrayUpdate2[A](arr: Array[A], i: Int, f: A => A) =
+    Try {
+      arr.updated(i, f(arr(i)))
+    }.toOption
 
   //
   // EXERCISE 3
@@ -218,7 +251,12 @@ object functions {
   //
   def divide1(a: Int, b: Int): Int = a / b
 
-  def divide2(a: Int, b: Int): ??? = ???
+  def divide2(a: Int, b: Int): Option[Int] =
+    if (b < 0) {
+      None
+    } else {
+      Some(a / b)
+    }
 
   //
   // EXERCISE 4
@@ -233,7 +271,9 @@ object functions {
     newId
   }
 
-  def freshId2(/* ??? */): (Int, Int) = ???
+  def freshId2(id: Int): (Int, Int) = {
+    id -> (id + 1)
+  }
 
   //
   // EXERCISE 5
@@ -244,7 +284,7 @@ object functions {
 
   def afterOneHour1: LocalDateTime = LocalDateTime.now.plusHours(1)
 
-  def afterOneHour2(/* ??? */): LocalDateTime = ???
+  def afterOneHour2(time: LocalDateTime): LocalDateTime = time.plusHours(1)
 
   //
   // EXERCISE 6
@@ -256,7 +296,9 @@ object functions {
     as.head
   }
 
-  def head2[A](as: List[A]): ??? = ???
+  def head2[A](as: List[A]): Option[A] = {
+    as.headOption
+  }
 
   //
   // EXERCISE 7
@@ -288,21 +330,21 @@ object functions {
   //
   // Implement the following function under the Scalazzi subset of Scala.
   //
-  def printLine(line: String): Unit = ???
+  def printLine(line: String): Unit = Unit
 
   //
   // EXERCISE 9
   //
   // Implement the following function under the Scalazzi subset of Scala.
   //
-  def readLine: String = ???
+  def readLine: String = ""
 
   //
   // EXERCISE 10
   //
   // Implement the following function under the Scalazzi subset of Scala.
   //
-  def systemExit(code: Int): Unit = ???
+  def systemExit(code: Int): Unit = ()
 
   //
   // EXERCISE 11
