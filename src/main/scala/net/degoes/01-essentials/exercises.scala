@@ -633,7 +633,7 @@ object higher_kinded {
   //
   // Create a new type called `Answer3` that has kind `*`.
   //
-  trait Answer3[A]
+  trait Answer3
 
   /*[]*/
 
@@ -701,7 +701,13 @@ object higher_kinded {
     }
   }
 
-  val ListCollectionLike: CollectionLike[List] = ???
+  val ListCollectionLike: CollectionLike[List] = new CollectionLike[List] {
+    override def empty[A]: List[A] = Nil
+
+    override def cons[A](a: A, as: List[A]): List[A] = a :: as
+
+    override def uncons[A](as: List[A]): Option[(A, List[A])] = as.headOption.map(_ -> as.tail)
+  }
 
   //
   // EXERCISE 8
@@ -713,7 +719,9 @@ object higher_kinded {
     def size[A](fa: F[A]): Int
   }
 
-  val ListSized: Sized[List] = ???
+  val ListSized: Sized[List] = new Sized[List] {
+    override def size[A](fa: List[A]): Int = fa.size
+  }
 
   //
   // EXERCISE 9
@@ -721,8 +729,9 @@ object higher_kinded {
   // Implement `Sized` for `Map`, partially applied with its first type
   // parameter to `String`.
   //
-  val MapStringSized: Sized[Map[String, ?]] =
-  ???
+  val MapStringSized: Sized[Map[String, ?]] = new Sized[Map[String, ?]] {
+    override def size[A](fa: Map[String, A]): Int = fa.size
+  }
 
   //
   // EXERCISE 10
@@ -730,15 +739,18 @@ object higher_kinded {
   // Implement `Sized` for `Map`, partially applied with its first type
   // parameter to a user-defined type parameter.
   //
-  def MapSized2[K]: Sized[Map[K, ?]] =
-    ???
+  def MapSized2[K]: Sized[Map[K, ?]] = new Sized[Map[K, ?]] {
+    override def size[A](fa: Map[K, A]): Int = fa.size
+  }
 
   //
   // EXERCISE 11
   //
   // Implement `Sized` for `Tuple3`.
   //
-  def Tuple3Sized[C, B]: ?? = ???
+  def Tuple3Sized[C, B]: Sized[(?, C, B)] = new Sized[(?, C, B)] {
+    override def size[A](fa: (A, C, B)): Int = 3
+  }
 }
 
 object tc_motivating {
@@ -801,6 +813,8 @@ object tc_motivating {
 
       sort(lessThan) ++ List(x) ++ sort(notLessThan)
   }
+
+  val woo = LessThan[List[List[List[Int]]]]
 
   sort(List(1, 2, 3))
   sort(List(List(1, 2, 3), List(9, 2, 1), List(1, 2, 9)))
