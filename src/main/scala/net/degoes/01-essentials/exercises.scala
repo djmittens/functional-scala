@@ -753,6 +753,45 @@ object higher_kinded {
   }
 }
 
+object hashmap {
+
+  trait Eq[A] {
+    def eq(l: A, r: A): Boolean
+  }
+
+  object Eq {
+    def apply[A](implicit A: Eq[A]): Eq[A] = A
+  }
+
+  implicit class EqSyntax[A: Eq](l: A) {
+    def === (r: A): Boolean = Eq[A].eq(l,r)
+  }
+
+  trait Hash[A] extends Eq[A] {
+    def hash(a: A): Int
+    final def hashConsistencyLaw(a1: A, a2: A): Boolean =
+      eq(a1, a2) == ((hash(a1) == hash(a2)) || !eq(a1, a2))
+  }
+
+  object Hash {
+    def apply[A](implicit h: Hash[A]) = h
+
+    implicit val HashInt: Hash[Int] = new Hash[Int] {
+      override def hash(a: Int): Int = a.hashCode()
+
+      override def eq(l: Int, r: Int): Boolean = l.equals(r)
+    }
+  }
+
+  implicit class HashSyntax[A](val a: A) extends AnyVal {
+    def hash(implicit A: Hash[A]): Int = A.hash(a)
+  }
+
+  class HashMap[K, V] {
+    def insert(k: K, v: V): HashMap[K, V] = ???
+  }
+}
+
 object tc_motivating {
 
   /*
@@ -972,7 +1011,13 @@ object typeclasses {
       sort1(lessThan) ++ List(x) ++ sort1(notLessThan)
   }
 
-  def sort2[A: Ord](l: List[A]): List[A] = ???
+  def sort2[A: Ord](l: List[A]): List[A] = l match {
+    case Nil => Nil
+    case x :: xs =>
+      val (lessThan, notLessThan) = xs.partition(y => y < x)
+
+      sort2(lessThan) ++ List(x) ++ sort2(notLessThan)
+  }
 
   //
   // EXERCISE 2
@@ -986,22 +1031,31 @@ object typeclasses {
     def parent(node: A): Option[A]
 
     def root: A
+
   }
 
   object PathLike {
     def apply[A](implicit A: PathLike[A]): PathLike[A] = A
+
   }
 
   sealed trait MyPath
+  case object Root extends MyPath
+  case class ChildOf(path: MyPath, name: String) extends MyPath
+
 
   implicit val MyPathPathLike: PathLike[MyPath] =
     new PathLike[MyPath] {
-      def child(parent: MyPath, name: String): MyPath = ???
+      def child(parent: MyPath, name: String): MyPath = ChildOf(parent, name)
 
-      def parent(node: MyPath): Option[MyPath] = ???
+      def parent(node: MyPath): Option[MyPath] = node match {
+        case Root => None
+        case ChildOf(path, _) => Some(path)
+      }
 
-      def root: MyPath = ???
+      def root: MyPath = Root
     }
+
 
   //
   // EXERCISE 3
@@ -1019,8 +1073,11 @@ object typeclasses {
     def law1: Boolean = ???
 
     def law2(node: A, name: String, assertEquals: (A, A) => Boolean): Boolean =
-      ???
-  }
+      parent(child(node, name)) match {
+        case Some(n) if n == node => true
+        case _ => false
+      }
+    }
 
   //
   // EXERCISE 5
@@ -1029,15 +1086,19 @@ object typeclasses {
   // into the given named node.
   //
   implicit class PathLikeSyntax[A](a: A) {
-    def /(name: String)(implicit A: PathLike[A]): A = ???
+    def /(name: String)(implicit A: PathLike[A]): A = {
+      A.child(a, name)
+    }
 
-    def parent(implicit A: PathLike[A]): Option[A] = ???
+    def parent(implicit A: PathLike[A]): Option[A] = {
+      A.parent(a)
+    }
   }
 
   def root[A: PathLike]: A = PathLike[A].root
 
-  //  root[MyPath] / "foo" / "bar" / "baz" // MyPath
-  // (root[MyPath] / "foo").parent        // Option[MyPath]
+  root[MyPath] / "foo" / "bar" / "baz" // MyPath
+  (root[MyPath] / "foo").parent        // Option[MyPath]
 
   //
   // EXERCISE 6
