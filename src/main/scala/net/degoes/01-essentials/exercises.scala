@@ -419,7 +419,7 @@ object higher_order {
   // Implement the following higher-order function.
   //
   def fanout[A, B, C](f: A => B, g: A => C): A => (B, C) =
-    ???
+    x => f(x) -> g(x)
 
   //
   // EXERCISE 2
@@ -427,7 +427,7 @@ object higher_order {
   // Implement the following higher-order function.
   //
   def cross[A, B, C, D](f: A => B, g: C => D): (A, C) => (B, D) =
-    ???
+    (a, c) => f(a) -> g(c)
 
   //
   // EXERCISE 3
@@ -435,7 +435,7 @@ object higher_order {
   // Implement the following higher-order function.
   //
   def either[A, B, C](f: A => B, g: C => B): Either[A, C] => B =
-    ???
+    _.fold(f, g)
 
   //
   // EXERCISE 4
@@ -443,7 +443,7 @@ object higher_order {
   // Implement the following higher-order function.
   //
   def choice[A, B, C, D](f: A => B, g: C => D): Either[A, C] => Either[B, D] =
-    ???
+    _.left.map(f).map(g)
 
   //
   // EXERCISE 5
@@ -451,7 +451,7 @@ object higher_order {
   // Implement the following higer-order function.
   //
   def compose[A, B, C](f: B => C, g: A => B): A => C =
-    ???
+    f.compose(g)
 
   //
   // EXERCISE 6
@@ -460,8 +460,23 @@ object higher_order {
   // the function, interpret its meaning.
   //
   def alt[E1, E2, A, B](l: Parser[E1, A], r: E1 => Parser[E2, B]):
-  Parser[E2, Either[A, B]] =
-    ???
+  Parser[E2, Either[A, B]] = Parser { in =>
+
+    val x = l.run(in).left.map { x =>
+      r(x).run(in).map {
+        case (_, ret) => ret
+      }
+    }.map {
+      case (_, ret) => ret
+    }
+
+    x match {
+      case Left(y) =>
+        y.map(y => in -> Right.apply(y))
+      case Right(y) =>
+        Right(in -> Left(y))
+    }
+  }
 
   case class Parser[+E, +A](run: String => Either[E, (String, A)])
 
@@ -489,7 +504,7 @@ object poly_functions {
   // `snd` that returns the second element out of any pair of `A` and `B`.
   //
   object snd {
-    def apply[A, B](t: (A, B)): B = ???
+    def apply[A, B](t: (A, B)): B = t._2
   }
 
   snd((1, "foo")) // "foo"
@@ -503,8 +518,10 @@ object poly_functions {
   // `A` the specified number of times.
   //
   object repeat {
+    @scala.annotation.tailrec
     def apply[A](n: Int)(a: A, f: A => A): A =
-      ???
+      if(n > 0) repeat(n - 1)(f(a), f)
+      else a
   }
 
   repeat[Int](100)(0, _ + 1) // 100
@@ -517,7 +534,7 @@ object poly_functions {
   //
   def countExample1[A, B](a: A, b: B): Either[A, B] = ???
 
-  val countExample1Answer = ???
+  val countExample1Answer = 2
 
   //
   // EXERCISE 4
@@ -527,7 +544,7 @@ object poly_functions {
   def countExample2[A, B](f: A => B, g: A => B, a: A): B =
     ???
 
-  val countExample2Answer = ???
+  val countExample2Answer = 0
 
   //
   // EXERCISE 5
@@ -551,8 +568,14 @@ object poly_functions {
                 l: List[String],
                 by: String => String)(
                 reducer: (String, List[String]) => String):
-  Map[String, String] =
-    ???
+  Map[String, String] ={
+    val m  = l.groupBy(by)
+    val res = m.map {
+      case (k, v) =>
+        k -> reducer(k, v)
+    }
+    res
+  }
 
   // groupBy1(Data, By)(Reducer) == Expected
 
@@ -563,7 +586,16 @@ object poly_functions {
   // the polymorphic function. Compare to the original.
   //
   object groupBy2 {
-    ???
+    def apply[A, B, C]
+    (l: List[A], by: A => B)
+    (reducer: (B, List[A]) => C): Map[B, C] = {
+      val m  = l.groupBy(by)
+      val res = m.map {
+        case (k, v) =>
+          k -> reducer(k, v)
+      }
+      res
+    }
   }
 
 }
@@ -586,7 +618,7 @@ object higher_kinded {
   // Identify a type constructor that takes one type parameter of kind `*`
   // (i.e. has kind `* => *`), and place your answer inside the square brackets.
   //
-  type Answer1 = `* => *`[???]
+  type Answer1 = `* => *`[Option]
 
   //
   // EXERCISE 2
@@ -594,14 +626,14 @@ object higher_kinded {
   // Identify a type constructor that takes two type parameters of kind `*` (i.e.
   // has kind `[*, *] => *`), and place your answer inside the square brackets.
   //
-  type Answer2 = `[*, *] => *`[????]
+  type Answer2 = `[*, *] => *`[Either]
 
   //
   // EXERCISE 3
   //
   // Create a new type called `Answer3` that has kind `*`.
   //
-  trait Answer3
+  trait Answer3[A]
 
   /*[]*/
 
@@ -610,7 +642,7 @@ object higher_kinded {
   //
   // Create a trait with kind `[*, *, *] => *`.
   //
-  trait Answer4
+  trait Answer4[A, B, C]
 
   /*[]*/
 
@@ -619,16 +651,16 @@ object higher_kinded {
   //
   // Create a new type that has kind `(* => *) => *`.
   //
-  type NewType1
+  trait NewType1[F[_]]
   /* ??? */
-  type Answer5 = `(* => *) => *`[?????]
+  type Answer5 = `(* => *) => *`[NewType1]
 
   //
   // EXERCISE 6
   //
   // Create a trait with kind `[* => *, (* => *) => *] => *`.
   //
-  trait Answer6
+  trait Answer6[F[_], G[_[_]]]
 
   /*[]*/
 
