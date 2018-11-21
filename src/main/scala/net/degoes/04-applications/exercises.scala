@@ -22,8 +22,43 @@ object exercises extends App {
   def crawlIO[E: Monoid, A: Monoid](
     seeds     : Set[URL],
     router    : URL => Set[URL],
-    processor : (URL, String) => IO[E, A]): IO[Nothing, Crawl[E, A]] =
-      ???
+    processor : (URL, String) => IO[E, A]): IO[Nothing, Crawl[E, A]] = {
+
+    def loop(seeds: Set[URL], ref: Ref[(Crawl[E, A], Set[URL])]): IO[Nothing, Unit] =
+      IO.traverse(seeds.flatMap(router)) { url =>
+        getURL(url).redeem(
+          _ => IO.unit,
+          html =>
+            /// For comprehensions cannot be tail recursive because they have the final map!!!
+
+//            for {
+//              crawl1 <- processor(url, html).redeemPure(Crawl(_, mzero[A]), Crawl(mzero[E], _))
+//              urls <- IO.now(extractURLs(url, html))
+//              crawl2 <- loop(urls.toSet -- visited, crawl0 |+| crawl1, visited ++ urls)
+//            } yield crawl2
+
+          processor(url, html).redeemPure(Crawl(_, mzero[A]), Crawl(mzero[E], _)).flatMap { crawl1 =>
+            val urls = extractURLs(url, html)
+
+            ref.modify {
+              case (crawl0, visited) =>
+                visited -> (crawl0 |+| crawl1, visited ++ urls)
+            }.flatMap { old =>
+              loop(urls.toSet -- old, ref)
+            }
+          }
+        )
+      }.void : IO[Nothing, Unit]
+
+    for {
+      ref <- Ref(mzero[Crawl[E, A]] -> seeds)
+      _ <- loop(seeds, ref)
+      tuple <- ref.get
+    } yield tuple._1
+
+
+//    loop(seeds, mzero[Crawl[E, A]], seeds)
+  }
 
   //
   // EXERCISE 2
