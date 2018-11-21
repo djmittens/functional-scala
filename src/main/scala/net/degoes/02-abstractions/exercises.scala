@@ -820,11 +820,15 @@ object optics {
   //
   final case class Lens[S, A](
                                get: S => A,
-                               set: A => (S => S)
+                               set: A => S => S
                              ) {
     self =>
     def ⋅[B](that: Lens[A, B]): Lens[S, B] =
-      ???
+      Lens(
+        get = { s => that.get(self.get(s)) },
+        //TODO: figure this out
+        set = { b => s =>  ???}
+      )
 
     def ⋅[B](that: Optional[A, B]): Optional[S, B] = ???
 
@@ -848,11 +852,13 @@ object optics {
     ))
   )
 
+
   import Org.site
   import Site.manager
   import Employee.salary
 
-  val org2_lens: Org = ???
+  //TODO what the heck.
+  val org2_lens: Org = ((site ⋅ manager ⋅ salary) updated (x => x * 0.95)) (org)
 
   //
   // EXERCISE 3
@@ -864,7 +870,10 @@ object optics {
                                 set: A => S) {
     self =>
     def ⋅[B](that: Prism[A, B]): Prism[S, B] =
-      ???
+      Prism(
+        get = {s => self.get(s).flatMap(that.get)},
+        set = {b => self.set(that.set(b))}
+      )
 
     def ⋅[B](that: Lens[A, B]): Optional[S, B] = ???
 
